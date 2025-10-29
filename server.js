@@ -34,7 +34,7 @@ app.post("/send_email", async (req, res) => {
     const mailOptions = {
       from: `"TMDB Blogger Post Generator" <${process.env.EMAIL_USER}>`,
       to: process.env.RECEIVER_EMAIL || process.env.EMAIL_USER,
-      subject: `🎬 New Blogger Post: ${title}`,
+      subject: `${title}`,
       html: `
         <h2>${title}</h2>
         <p><b>Trailer:</b> <a href="${trailer}" target="_blank">${trailer}</a></p>
