@@ -1,0 +1,16 @@
+# Node
+node_modules/
+package-lock.json
+npm-debug.log
+
+# Local environment files
+.env
+.env.local
+
+# Vercel
+.vercel/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
