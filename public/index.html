@@ -1,222 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TMDB Blogger Post Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
-body{
-  background: radial-gradient(circle at top, #121212, #000);
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-  color:#fff;
-}
-.container{
-  background:rgba(255,255,255,0.08);
-  border-radius:16px;
-  backdrop-filter:blur(10px);
-  box-shadow:0 0 20px rgba(0,0,0,0.4);
-  padding:25px;
-  width:100%;
-  max-width:700px;
-}
-h1{text-align:center;color:#ff5733;margin-bottom:15px;}
-input,textarea{
-  width:100%;padding:10px;margin:6px 0;
-  border:none;border-radius:8px;outline:none;
-  background:rgba(255,255,255,0.1);color:#fff;
-}
-input:focus,textarea:focus{
-  box-shadow:0 0 10px #ff5733;
-}
-button{
-  background:linear-gradient(90deg,#ff5733,#ff8a33);
-  border:none;color:#fff;
-  padding:10px 20px;margin:8px 5px;
-  border-radius:25px;cursor:pointer;
-  font-weight:600;transition:0.3s;
-}
-button:hover{opacity:0.8;}
-.download-item{
-  display:flex;gap:8px;align-items:center;margin-top:8px;
-}
-.download-item input{
-  flex:1;
-}
-.remove-btn{
-  background:#e53935;
-}
-textarea#output{
-  min-height:220px;margin-top:15px;resize:vertical;
-}
-.btn-group{text-align:center;margin-top:15px;}
-@media(max-width:600px){
-  .download-item{flex-direction:column;align-items:stretch}
-}
-</style>
+  <meta charset="UTF-8" />
+  <title>TMDB Post Generator</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="container">
-  <h1>🎬 TMDB Blogger Post Generator</h1>
+  <div class="container">
+    <h1>🎬 TMDB Post Generator</h1>
 
-  <input type="text" id="query" placeholder="Enter Movie or TV Show Name">
-  <button id="fetchBtn">🔍 Fetch Data</button>
-
-  <div id="formFields" style="display:none;">
-    <input id="title" placeholder="Title">
-    <input id="year" placeholder="Year">
-    <input id="genres" placeholder="Genres">
-    <input id="runtime" placeholder="Runtime (minutes)">
-    <input id="rating" placeholder="IMDb Rating">
-    <input id="cast" placeholder="Cast (comma separated)">
-    <input id="poster" placeholder="Poster URL">
-    <input id="trailer" placeholder="Trailer URL">
-    <textarea id="overview" placeholder="Overview"></textarea>
-
-    <h3 style="margin-top:10px;">Download Links</h3>
-    <div id="downloads"></div>
-    <button id="addDownload">➕ Add Download Link</button>
-
-    <div class="btn-group">
-      <button id="generateBtn">🧩 Generate Post</button>
-      <button id="copyBtn">📋 Copy HTML</button>
-      <button id="emailBtn">📧 Send via Email</button>
+    <div>
+      <input id="movieName" placeholder="Enter Movie or TV Show name" />
+      <select id="type">
+        <option value="movie">Movie</option>
+        <option value="tv">TV Show</option>
+      </select>
+      <button id="fetchBtn">Fetch from TMDB</button>
     </div>
 
-    <textarea id="output" placeholder="Generated Blogger HTML"></textarea>
+    <div id="movieForm" style="margin-top:15px;">
+      <label><b>Title:</b></label>
+      <input id="title" />
+      <label><b>Tagline:</b></label>
+      <input id="tagline" />
+      <label><b>Overview:</b></label>
+      <textarea id="overview"></textarea>
+      <label><b>Poster URL:</b></label>
+      <input id="poster" />
+      <label><b>Backdrop:</b></label>
+      <input id="backdrop" />
+      <label><b>Release Date:</b></label>
+      <input id="release" />
+      <label><b>Runtime:</b></label>
+      <input id="runtime" />
+      <label><b>Status:</b></label>
+      <input id="status" />
+      <label><b>Language:</b></label>
+      <input id="language" />
+      <label><b>Rating:</b></label>
+      <input id="rating" />
+      <label><b>Director / Creator:</b></label>
+      <input id="director" />
+      <label><b>Cast:</b></label>
+      <input id="cast" />
+      <label><b>Production Companies:</b></label>
+      <input id="companies" />
+      <label><b>Genres:</b></label>
+      <input id="genres" />
+      <label><b>Trailer URL:</b></label>
+      <input id="trailer" />
+
+      <h3>Download Links</h3>
+      <div id="downloadFields"></div>
+      <button id="addDownload">+ Add More</button>
+
+      <button id="generateBtn">Generate HTML</button>
+    </div>
+
+    <div class="output-section">
+      <h3>Generated HTML</h3>
+      <pre id="generatedHtml"></pre>
+      <button id="copyBtn">Copy HTML</button>
+    </div>
   </div>
-</div>
 
-<script>
-const API_KEY = "c9ac3637696d089a9b1a1781518778a0";
-const fetchBtn = document.getElementById("fetchBtn");
-const addDownloadBtn = document.getElementById("addDownload");
-const generateBtn = document.getElementById("generateBtn");
-const copyBtn = document.getElementById("copyBtn");
-const emailBtn = document.getElementById("emailBtn");
-const downloadsContainer = document.getElementById("downloads");
-
-fetchBtn.addEventListener("click", async ()=>{
-  const query = document.getElementById("query").value.trim();
-  if(!query) return Swal.fire("Oops!","Please enter a movie or show name.","warning");
-  try{
-    Swal.fire({title:"Fetching...",text:"Getting data from TMDB",didOpen:()=>Swal.showLoading(),allowOutsideClick:false});
-    const searchRes = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
-    const searchData = await searchRes.json();
-    if(!searchData.results.length) throw new Error("No results found!");
-    const movie = searchData.results[0];
-    const detailRes = await fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${API_KEY}&append_to_response=credits,videos`);
-    const details = await detailRes.json();
-    const title = details.title;
-    const year = details.release_date ? details.release_date.split("-")[0] : "";
-    const genres = details.genres.map(g=>g.name).join(", ");
-    const runtime = details.runtime || "";
-    const rating = details.vote_average?.toFixed(1);
-    const cast = details.credits.cast.slice(0,5).map(c=>c.name).join(", ");
-    const poster = `https://image.tmdb.org/t/p/w500${details.poster_path}`;
-    const trailerObj = details.videos.results.find(v=>v.site==="YouTube" && v.type==="Trailer");
-    const trailer = trailerObj ? `https://www.youtube.com/watch?v=${trailerObj.key}` : "";
-    document.getElementById("title").value=title;
-    document.getElementById("year").value=year;
-    document.getElementById("genres").value=genres;
-    document.getElementById("runtime").value=runtime;
-    document.getElementById("rating").value=rating;
-    document.getElementById("cast").value=cast;
-    document.getElementById("poster").value=poster;
-    document.getElementById("trailer").value=trailer;
-    document.getElementById("overview").value=details.overview;
-    document.getElementById("formFields").style.display="block";
-    Swal.close();
-    Swal.fire("Success!","Movie details loaded.","success");
-  }catch(err){
-    Swal.fire("Error",err.message,"error");
-  }
-});
-
-addDownloadBtn.addEventListener("click", ()=>{
-  const div = document.createElement("div");
-  div.className = "download-item";
-  div.innerHTML = `
-    <input type="text" placeholder="Label (e.g. Download 480p)" class="label">
-    <input type="url" placeholder="Download URL" class="url">
-    <button class="remove-btn">❌</button>
-  `;
-  div.querySelector(".remove-btn").addEventListener("click",()=>div.remove());
-  downloadsContainer.appendChild(div);
-});
-
-generateBtn.addEventListener("click", ()=>{
-  const title = document.getElementById("title").value;
-  const year = document.getElementById("year").value;
-  const genres = document.getElementById("genres").value;
-  const runtime = document.getElementById("runtime").value;
-  const rating = document.getElementById("rating").value;
-  const cast = document.getElementById("cast").value;
-  const overview = document.getElementById("overview").value;
-  const poster = document.getElementById("poster").value;
-  const trailer = document.getElementById("trailer").value;
-  const downloadLinks = [...downloadsContainer.querySelectorAll(".download-item")].map(d=>({
-    label:d.querySelector(".label").value,
-    url:d.querySelector(".url").value
-  })).filter(d=>d.label && d.url);
-  let downloadHTML = downloadLinks.map(d=>`
-    <a href="${d.url}" target="_blank" style="background:#2196f3;color:#fff;padding:10px 25px;margin:5px;border-radius:25px;text-decoration:none;display:inline-block;">⬇ ${d.label}</a>
-  `).join("");
-  const html = `
-<div style="background:#0e0e0e;color:#fff;padding:20px;border-radius:12px;font-family:'Poppins',sans-serif;max-width:700px;margin:auto;line-height:1.6;">
-  <img src="${poster}" alt="${title}" style="width:100%;border-radius:12px;margin-bottom:15px;">
-  <h2 style="color:#ff5733;text-align:center;font-size:26px;">🎬 ${title} (${year})</h2>
-  <p><b>Genre:</b> ${genres}</p>
-  <p><b>Runtime:</b> ${runtime} min</p>
-  <p><b>IMDb Rating:</b> ⭐ ${rating} / 10</p>
-  <p><b>Cast:</b> ${cast}</p>
-  <p>${overview}</p>
-  <div style="text-align:center;margin-top:15px;">
-    <a href="${trailer}" target="_blank" style="background:#ff5733;color:#fff;padding:10px 25px;border-radius:25px;text-decoration:none;">▶ Watch Trailer</a>
-  </div>
-  <div style="margin-top:20px;text-align:center;">
-    ${downloadHTML}
-  </div>
-</div>`;
-  document.getElementById("output").value = html.trim();
-  Swal.fire("Generated!","Blogger HTML created successfully.","success");
-});
-
-copyBtn.addEventListener("click", ()=>{
-  const output = document.getElementById("output");
-  if(!output.value) return Swal.fire("No HTML","Please generate HTML first.","warning");
-  output.select();document.execCommand("copy");
-  Swal.fire("Copied!","HTML copied to clipboard.","success");
-});
-
-emailBtn.addEventListener("click", async ()=>{
-  const title = document.getElementById("title").value;
-  const html = document.getElementById("output").value;
-  const trailer = document.getElementById("trailer").value;
-  const downloadLinks = [...downloadsContainer.querySelectorAll(".download-item")].map(d=>({
-    label:d.querySelector(".label").value,
-    url:d.querySelector(".url").value
-  }));
-  if(!html) return Swal.fire("Error","Please generate the post first.","error");
-  try{
-    Swal.fire({title:"Sending...",text:"Sending data to email API...",didOpen:()=>Swal.showLoading(),allowOutsideClick:false});
-    await fetch("/send_email",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({title,html,trailer,downloadLinks})
-    });
-    Swal.close();
-    Swal.fire("Sent!","Email request sent successfully.","success");
-  }catch(err){
-    Swal.fire("Error","Failed to send email.","error");
-  }
-});
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
