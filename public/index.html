@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TMDB Post Generator</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>TMDB Post Generator</h1>
+
+    <section class="search">
+      <label>Search Movie / TV:</label>
+      <div class="row">
+        <input id="searchQuery" placeholder="Enter movie or TV show name" />
+        <select id="searchType">
+          <option value="movie">Movie</option>
+          <option value="tv">TV</option>
+        </select>
+        <button id="fetchBtn">Fetch & Auto-fill</button>
+      </div>
+      <p class="muted">Search via TMDB and auto-populate the form below. All fields are editable.</p>
+    </section>
+
+    <section id="formSection" class="form-section">
+      <h2>Post Details</h2>
+
+      <div class="field"><label>Title</label><input id="title" /></div>
+      <div class="field"><label>Tagline</label><input id="tagline" /></div>
+      <div class="field"><label>Overview</label><textarea id="overview"></textarea></div>
+      <div class="row">
+        <div class="field small"><label>Release Date</label><input id="release_date" /></div>
+        <div class="field small"><label>Runtime (min)</label><input id="runtime" /></div>
+        <div class="field small"><label>Rating</label><input id="rating" /></div>
+      </div>
+      <div class="field"><label>Language</label><input id="language" /></div>
+      <div class="field"><label>Production Companies (comma separated)</label><input id="companies" /></div>
+      <div class="field"><label>Genres (comma separated)</label><input id="genres" /></div>
+
+      <div class="field"><label>Directors (comma separated)</label><input id="directors" /></div>
+      <div class="field"><label>Writers (comma separated)</label><input id="writers" /></div>
+      <div class="field"><label>Top Cast (comma separated)</label><input id="cast" /></div>
+
+      <div class="field"><label>Trailer URL</label><input id="trailer" /></div>
+
+      <div class="downloads">
+        <label>Download Links</label>
+        <div id="downloadContainer"></div>
+        <button id="addDownload">Add Download Link</button>
+      </div>
+
+      <div class="actions">
+        <button id="generateBtn">Generate HTML</button>
+        <button id="sendBtn">Send to Blogger (via Gmail)</button>
+      </div>
+    </section>
+
+    <section class="output">
+      <h2>Generated HTML</h2>
+      <div class="code-tools">
+        <button id="copyBtn">Copy HTML</button>
+      </div>
+      <pre id="codeBox" class="code-box" readonly></pre>
+    </section>
+
+    <footer>
+      <small>Ready to deploy on Vercel. Set TMDB_API_KEY, GMAIL_USER, GMAIL_PASS, BLOGGER_EMAIL in environment.</small>
+    </footer>
+  </div>
+
+  <script src="/script.js"></script>
+</body>
+</html>
