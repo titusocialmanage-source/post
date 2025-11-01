@@ -7,9 +7,8 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'TMDB_API_KEY not configured' });
     }
 
-    // Accept POST with JSON { query: "...", type: "movie"|"tv" }
-    // Or GET with ?query=...&type=...
-    const { query, type } = req.method === 'POST' ? req.body : req.query;
+    const payload = req.method === 'POST' ? req.body : req.query;
+    const { query, type } = payload || {};
 
     if (!query || !type) {
       return res.status(400).json({ error: 'Missing query or type parameter (movie|tv)' });
@@ -22,7 +21,7 @@ module.exports = async (req, res) => {
         : `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${q}`;
 
     const searchResp = await axios.get(searchUrl);
-    const results = searchResp.data && searchResp.data.results ? searchResp.data.results : [];
+    const results = (searchResp.data && searchResp.data.results) || [];
 
     if (!results.length) {
       return res.status(404).json({ error: 'No results found for that query' });
@@ -31,17 +30,18 @@ module.exports = async (req, res) => {
     const first = results[0];
     const id = first.id;
 
-    // Fetch details with appended credits and videos
-    const append = 'credits,videos,external_ids';
+    // Request a lot of data to power the richer UI: credits, videos, images, external_ids, recommendations, similar
+    const append = 'credits,videos,images,external_ids,recommendations,similar';
     const detailsUrl =
       type === 'tv'
         ? `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&append_to_response=${append}`
         : `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=${append}`;
 
+    // We also fetch alternative translations optionally for language names, but keep it simple here.
     const detailsResp = await axios.get(detailsUrl);
     const details = detailsResp.data;
 
-    // Normalize some fields between movie and tv
+    // Normalize fields between movie and tv
     const normalized = {
       id: details.id,
       type,
@@ -52,8 +52,9 @@ module.exports = async (req, res) => {
       release_date: details.release_date || details.first_air_date || '',
       runtime:
         details.runtime ||
-        (Array.isArray(details.episode_run_time) && details.episode_run_time.length ? details.episode_run_time[0] : null),
+        (Array.isArray(details.episode_run_time) && details.episode_run_time.length ? details.episode_run_time[0] : ''),
       rating: details.vote_average || null,
+      votes: details.vote_count || 0,
       language: details.original_language || '',
       production_companies: details.production_companies || [],
       genres: details.genres || [],
@@ -63,45 +64,62 @@ module.exports = async (req, res) => {
       external_ids: details.external_ids || {},
       credits: details.credits || { cast: [], crew: [] },
       videos: details.videos || { results: [] },
-      raw: details // include raw payload in case frontend needs more
+      images: details.images || { backdrops: [], posters: [], stills: [] },
+      recommendations: (details.recommendations && details.recommendations.results) || [],
+      similar: (details.similar && details.similar.results) || [],
+      raw: details
     };
 
-    // Extract main trailer (YouTube)
-    const trailers = (normalized.videos.results || []).filter(
-      (v) =>
-        (v.type && v.type.toLowerCase().includes('trailer')) &&
-        (v.site && v.site.toLowerCase().includes('youtube') || v.site.toLowerCase() === 'youtube')
+    // Extract trailers (favor YouTube)
+    const trailers = (normalized.videos.results || []).filter((v) =>
+      v.type && v.type.toLowerCase().includes('trailer')
     );
-    if (trailers.length) {
-      normalized.trailer = `https://www.youtube.com/watch?v=${trailers[0].key}`;
-    } else {
-      // fallback to any video
-      if (normalized.videos.results && normalized.videos.results.length) {
-        const v = normalized.videos.results[0];
-        normalized.trailer = v.site && v.site.toLowerCase().includes('youtube') ? `https://www.youtube.com/watch?v=${v.key}` : '';
-      } else {
-        normalized.trailer = '';
-      }
-    }
+    const yt = trailers.find((v) => v.site && v.site.toLowerCase().includes('youtube'));
+    if (yt) normalized.trailer = `https://www.youtube.com/watch?v=${yt.key}`;
+    else if (trailers.length) normalized.trailer = `${trailers[0].site === 'YouTube' ? 'https://www.youtube.com/watch?v=' + trailers[0].key : ''}`;
+    else normalized.trailer = '';
 
-    // Limit cast to top 12
-    normalized.cast = (normalized.credits.cast || []).slice(0, 12).map((c) => ({
+    // Cast & crew processing
+    normalized.cast = (normalized.credits.cast || []).slice(0, 20).map((c) => ({
+      id: c.id,
       name: c.name,
       character: c.character,
       profile_path: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null
     }));
 
-    // Helpful crew roles: Director(s), Writer(s), Producer(s)
     const crew = normalized.credits.crew || [];
     const directors = crew.filter((c) => c.job && c.job.toLowerCase() === 'director').map((c) => c.name);
     const writers = crew.filter((c) => /writer/i.test(c.job)).map((c) => c.name);
     const producers = crew.filter((c) => /producer/i.test(c.job)).map((c) => c.name);
+    const composers = crew.filter((c) => /composer/i.test(c.job)).map((c) => c.name);
 
-    normalized.crew_summary = {
-      directors,
-      writers,
-      producers
-    };
+    normalized.crew_summary = { directors, writers, producers, composers };
+
+    // Images: merge posters + backdrops and form convenient arrays (limit to top 20)
+    const posters = (normalized.images.posters || []).map(p => ({
+      path: p.file_path ? `https://image.tmdb.org/t/p/original${p.file_path}` : null,
+      width: p.width,
+      height: p.height,
+      iso_639_1: p.iso_639_1
+    }));
+    const backdrops = (normalized.images.backdrops || []).map(b => ({
+      path: b.file_path ? `https://image.tmdb.org/t/p/original${b.file_path}` : null,
+      width: b.width,
+      height: b.height,
+      iso_639_1: b.iso_639_1
+    }));
+
+    normalized.images_list = [...backdrops, ...posters].filter(i => i.path).slice(0, 30);
+
+    // For TV: include seasons and networks if present
+    if (type === 'tv') {
+      normalized.seasons = details.seasons || [];
+      normalized.networks = details.networks || [];
+      normalized.created_by = details.created_by || [];
+      normalized.episode_run_time = details.episode_run_time || [];
+      normalized.last_episode_to_air = details.last_episode_to_air || null;
+      normalized.next_episode_to_air = details.next_episode_to_air || null;
+    }
 
     return res.status(200).json(normalized);
   } catch (err) {
