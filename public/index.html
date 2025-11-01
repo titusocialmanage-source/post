@@ -1,144 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TMDB Post Generator + Gmail API</title>
-  <style>
-    body { font-family: Arial; background: #f7f7f7; padding: 20px; }
-    .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; }
-    input, textarea, button, select { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; }
-    button { background: #007bff; color: white; font-weight: bold; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    #output { background: #222; color: #0f0; padding: 10px; border-radius: 5px; white-space: pre-wrap; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMDB Blogger Post Generator</title>
+<style>
+  body { font-family: 'Poppins', sans-serif; background: #eef2f7; padding: 20px; }
+  .container { background: #fff; padding: 20px; border-radius: 12px; max-width: 720px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  input, textarea, button { width: 100%; margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #ccc; }
+  button { background: #2196F3; color: white; border: none; cursor: pointer; font-weight: bold; }
+  button:hover { background: #1976D2; }
+  .result { white-space: pre-wrap; background: #f9f9f9; padding: 15px; border-radius: 10px; margin-top: 20px; }
+  img { max-width: 100%; border-radius: 10px; margin: 10px 0; }
+  h2 { text-align: center; color: #333; margin-bottom: 15px; }
+  #searchResults div:hover { background: #e3f2fd; transition: 0.2s; }
+</style>
 </head>
 <body>
-  <h2 align="center">🎬 TMDB Post Generator + Gmail Publisher</h2>
+<div class="container">
+  <h2>🎬 TMDB Blogger Post Generator</h2>
 
-  <div class="container">
-    <div>
-      <select id="type">
-        <option value="movie">Movie</option>
-        <option value="tv">TV Show</option>
-      </select>
-      <input type="text" id="tmdbId" placeholder="Enter TMDB ID">
-      <button id="fetchBtn">Fetch from TMDB</button>
+  <input type="text" id="searchInput" placeholder="Enter movie or TV show name...">
+  <div id="searchResults"></div>
+
+  <input type="text" id="title" placeholder="Title">
+  <textarea id="overview" placeholder="Overview"></textarea>
+  <input type="text" id="release_date" placeholder="Release Date">
+  <input type="text" id="rating" placeholder="Rating">
+  <input type="text" id="genres" placeholder="Genres">
+  <input type="text" id="poster" placeholder="Poster URL">
+  <img id="preview" style="display:none"/>
+
+  <input type="text" id="download_label" placeholder="Download Label (e.g. Watch Now)">
+  <input type="text" id="download_url" placeholder="Download URL (e.g. https://example.com)">
+
+  <button onclick="generateHTML()">Generate Blogger HTML</button>
+  <button onclick="copyHTML()">Copy HTML</button>
+  <button onclick="adminLogin()">🔐 Admin Login</button>
+  <button id="publishBtn" onclick="publishPost()" disabled>🚀 Publish Post</button>
+
+  <div id="output" class="result" contenteditable="true"></div>
+</div>
+
+<script>
+const apiKey = "c9ac3637696d089a9b1a1781518778a0"; // TMDB API key
+const API_URL = "https://tmdb-smtp-api.vercel.app/send"; // Change to your backend URL
+const ADMIN_EMAIL = "titusocialmanage@gmail.com";
+const ADMIN_TOKEN = "admin1234";
+
+let isAdmin = false;
+
+document.getElementById('searchInput').addEventListener('input', async e => {
+  const query = e.target.value.trim();
+  const resultsDiv = document.getElementById('searchResults');
+  if (query.length < 2) return resultsDiv.innerHTML = "";
+
+  const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}`);
+  const data = await res.json();
+
+  resultsDiv.innerHTML = data.results.slice(0, 5).map(item => `
+    <div style="cursor:pointer;padding:8px;border-bottom:1px solid #ddd"
+         onclick="selectItem(${item.id}, '${item.media_type}')">
+      ${item.title || item.name} (${(item.release_date || item.first_air_date || 'N/A').slice(0,4)})
     </div>
+  `).join('');
+});
 
-    <input id="title" placeholder="Title">
-    <input id="tagline" placeholder="Tagline">
-    <textarea id="overview" placeholder="Overview"></textarea>
-    <input id="releaseDate" placeholder="Release Date">
-    <input id="runtime" placeholder="Runtime (min)">
-    <input id="rating" placeholder="Rating">
-    <input id="genres" placeholder="Genres (comma separated)">
-    <input id="language" placeholder="Language">
-    <input id="cast" placeholder="Main Cast (comma separated)">
-    <input id="trailer" placeholder="Trailer YouTube URL">
+async function selectItem(id, type) {
+  const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${apiKey}&language=en-US`);
+  const data = await res.json();
 
-    <h3>💾 Download Links</h3>
-    <div id="downloadContainer">
-      <div class="flex">
-        <input type="text" placeholder="Download Text" class="downloadText">
-        <input type="text" placeholder="Download URL" class="downloadUrl">
-      </div>
-    </div>
-    <button id="addDownload">➕ Add Download</button>
-    <button id="generateBtn">⚡ Generate HTML</button>
-    <button id="sendBtn">📨 Send via Gmail API</button>
+  document.getElementById('title').value = data.title || data.name || '';
+  document.getElementById('overview').value = data.overview || '';
+  document.getElementById('release_date').value = data.release_date || data.first_air_date || '';
+  document.getElementById('rating').value = data.vote_average || '';
+  document.getElementById('genres').value = (data.genres || []).map(g => g.name).join(', ');
+  const posterUrl = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '';
+  document.getElementById('poster').value = posterUrl;
+  document.getElementById('preview').src = posterUrl;
+  document.getElementById('preview').style.display = posterUrl ? "block" : "none";
+  document.getElementById('searchResults').innerHTML = "";
+  document.getElementById('searchInput').value = "";
+}
 
-    <h3>📝 Output</h3>
-    <div id="output"></div>
+function generateHTML() {
+  const title = document.getElementById('title').value;
+  const overview = document.getElementById('overview').value;
+  const release_date = document.getElementById('release_date').value;
+  const rating = parseFloat(document.getElementById('rating').value) || 0;
+  const genres = document.getElementById('genres').value;
+  const poster = document.getElementById('poster').value;
+  const downloadLabel = document.getElementById('download_label').value;
+  const downloadUrl = document.getElementById('download_url').value;
+  const stars = "⭐".repeat(Math.round(rating / 2));
+
+  const html = `
+<div style="background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:20px;margin:20px auto;max-width:600px;">
+  <h2 style="color:#222;text-align:center;margin-bottom:10px;">${title}</h2>
+  <img src="${poster}" alt="${title}" style="width:100%;border-radius:10px;margin-bottom:15px;">
+  <p style="text-align:center;"><b>Release Date:</b> ${release_date}</p>
+  <p style="text-align:center;"><b>Rating:</b> ${rating}/10 ${stars}</p>
+  <p style="text-align:center;"><b>Genres:</b> ${genres}</p>
+  <p style="line-height:1.6;text-align:justify;color:#333;">${overview}</p>
+  <div style="text-align:center;margin-top:20px;">
+    <a href="${downloadUrl}" style="display:inline-block;background:#2196F3;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+      ${downloadLabel || "▶ Watch / Download"}
+    </a>
   </div>
+</div>
+  `.trim();
 
-  <script>
-    const TMDB_API_KEY = "c9ac3637696d089a9b1a1781518778a0";
+  document.getElementById('output').innerText = html;
+}
 
-    async function fetchTMDB() {
-      const id = document.getElementById("tmdbId").value.trim();
-      const type = document.getElementById("type").value;
-      if (!id) return alert("Enter TMDB ID");
-      const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_API_KEY}&append_to_response=videos,credits`);
-      const data = await res.json();
+function copyHTML() {
+  const text = document.getElementById('output').innerText;
+  navigator.clipboard.writeText(text).then(() => alert("✅ HTML copied to clipboard!"));
+}
 
-      if (data.success === false) return alert("Invalid TMDB ID");
-      document.getElementById("title").value = data.title || data.name || "";
-      document.getElementById("tagline").value = data.tagline || "";
-      document.getElementById("overview").value = data.overview || "";
-      document.getElementById("releaseDate").value = data.release_date || data.first_air_date || "";
-      document.getElementById("runtime").value = data.runtime || (data.episode_run_time ? data.episode_run_time[0] : "");
-      document.getElementById("rating").value = data.vote_average || "";
-      document.getElementById("genres").value = data.genres?.map(g => g.name).join(", ") || "";
-      document.getElementById("language").value = data.original_language || "";
-      document.getElementById("cast").value = data.credits?.cast?.slice(0, 5).map(c => c.name).join(", ") || "";
-      const trailer = data.videos?.results?.find(v => v.type === "Trailer");
-      document.getElementById("trailer").value = trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : "";
-    }
+function adminLogin() {
+  const email = prompt("Enter admin email:");
+  const token = prompt("Enter admin token:");
+  if (email === ADMIN_EMAIL && token === ADMIN_TOKEN) {
+    alert("✅ Logged in successfully!");
+    isAdmin = true;
+    document.getElementById("publishBtn").disabled = false;
+  } else {
+    alert("❌ Invalid credentials!");
+  }
+}
 
-    function generateHTML() {
-      const title = document.getElementById("title").value;
-      const tagline = document.getElementById("tagline").value;
-      const overview = document.getElementById("overview").value;
-      const releaseDate = document.getElementById("releaseDate").value;
-      const runtime = document.getElementById("runtime").value;
-      const rating = document.getElementById("rating").value;
-      const genres = document.getElementById("genres").value;
-      const language = document.getElementById("language").value;
-      const cast = document.getElementById("cast").value;
-      const trailer = document.getElementById("trailer").value;
+async function publishPost() {
+  if (!isAdmin) return alert("You must login as admin to publish!");
 
-      let downloadHTML = "";
-      document.querySelectorAll(".downloadText").forEach((textEl, i) => {
-        const text = textEl.value.trim();
-        const url = document.querySelectorAll(".downloadUrl")[i].value.trim();
-        if (text && url) downloadHTML += `<p><a href="${url}" target="_blank"><b>${text}</b></a></p>`;
-      });
+  const html = document.getElementById("output").innerText;
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subject: "New TMDB Post",
+      html,
+      token: ADMIN_TOKEN
+    })
+  });
 
-      const html = `
-<h2><b>${title}</b></h2>
-<p><i>${tagline}</i></p>
-<p><b>Release Date:</b> ${releaseDate}</p>
-<p><b>Runtime:</b> ${runtime} min</p>
-<p><b>Rating:</b> ${rating}/10</p>
-<p><b>Genres:</b> ${genres}</p>
-<p><b>Language:</b> ${language}</p>
-<p><b>Cast:</b> ${cast}</p>
-<p>${overview}</p>
-${trailer ? `<iframe width="560" height="315" src="${trailer.replace('watch?v=', 'embed/')}" frameborder="0" allowfullscreen></iframe>` : ""}
-<h3>Download Links</h3>
-${downloadHTML}
-`;
-      document.getElementById("output").textContent = html.trim();
-      return { title, genres, html };
-    }
-
-    async function sendPost() {
-      const { title, genres, html } = generateHTML();
-      if (!title || !html) return alert("Generate the post first.");
-
-      const res = await fetch("/send-post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, genres, html }),
-      });
-
-      const data = await res.json();
-      alert(data.success ? "✅ Post sent to Blogger Email!" : "❌ Failed: " + data.error);
-    }
-
-    document.getElementById("fetchBtn").addEventListener("click", fetchTMDB);
-    document.getElementById("generateBtn").addEventListener("click", generateHTML);
-    document.getElementById("sendBtn").addEventListener("click", sendPost);
-    document.getElementById("addDownload").addEventListener("click", () => {
-      const div = document.createElement("div");
-      div.className = "flex";
-      div.innerHTML = `
-        <input type="text" placeholder="Download Text" class="downloadText">
-        <input type="text" placeholder="Download URL" class="downloadUrl">
-      `;
-      document.getElementById("downloadContainer").appendChild(div);
-    });
-  </script>
+  if (response.ok) alert("✅ Post published to Blogger!");
+  else alert("❌ Publish failed!");
+}
+</script>
 </body>
 </html>
