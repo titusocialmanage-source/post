@@ -1,152 +1,144 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TMDB Post Generator — Stylish</title>
-  <link rel="stylesheet" href="/style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TMDB Post Generator + Gmail API</title>
+  <style>
+    body { font-family: Arial; background: #f7f7f7; padding: 20px; }
+    .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; }
+    input, textarea, button, select { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #007bff; color: white; font-weight: bold; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #output { background: #222; color: #0f0; padding: 10px; border-radius: 5px; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
-  <div class="app">
-    <header class="app-header">
-      <div class="logo">
-        <h1>TMDB Post Generator</h1>
-        <p class="tag">Stylish Blogger posts — select screenshots & generate inline-CSS HTML</p>
+  <h2 align="center">🎬 TMDB Post Generator + Gmail Publisher</h2>
+
+  <div class="container">
+    <div>
+      <select id="type">
+        <option value="movie">Movie</option>
+        <option value="tv">TV Show</option>
+      </select>
+      <input type="text" id="tmdbId" placeholder="Enter TMDB ID">
+      <button id="fetchBtn">Fetch from TMDB</button>
+    </div>
+
+    <input id="title" placeholder="Title">
+    <input id="tagline" placeholder="Tagline">
+    <textarea id="overview" placeholder="Overview"></textarea>
+    <input id="releaseDate" placeholder="Release Date">
+    <input id="runtime" placeholder="Runtime (min)">
+    <input id="rating" placeholder="Rating">
+    <input id="genres" placeholder="Genres (comma separated)">
+    <input id="language" placeholder="Language">
+    <input id="cast" placeholder="Main Cast (comma separated)">
+    <input id="trailer" placeholder="Trailer YouTube URL">
+
+    <h3>💾 Download Links</h3>
+    <div id="downloadContainer">
+      <div class="flex">
+        <input type="text" placeholder="Download Text" class="downloadText">
+        <input type="text" placeholder="Download URL" class="downloadUrl">
       </div>
-      <div class="controls">
-        <input id="searchQuery" placeholder="Search movie or TV show..." />
-        <select id="searchType">
-          <option value="movie">Movie</option>
-          <option value="tv">TV</option>
-        </select>
-        <button id="fetchBtn" class="btn primary">Fetch</button>
-      </div>
-    </header>
+    </div>
+    <button id="addDownload">➕ Add Download</button>
+    <button id="generateBtn">⚡ Generate HTML</button>
+    <button id="sendBtn">📨 Send via Gmail API</button>
 
-    <main class="grid">
-      <section class="panel panel-left">
-        <h2>Post Details (editable)</h2>
-
-        <div class="form-row">
-          <label>Title</label>
-          <input id="title" />
-        </div>
-
-        <div class="form-row">
-          <label>Tagline</label>
-          <input id="tagline" />
-        </div>
-
-        <div class="form-row">
-          <label>Overview</label>
-          <textarea id="overview"></textarea>
-        </div>
-
-        <div class="form-row split">
-          <div>
-            <label>Release Date</label>
-            <input id="release_date" />
-          </div>
-          <div>
-            <label>Runtime</label>
-            <input id="runtime" />
-          </div>
-          <div>
-            <label>Rating</label>
-            <input id="rating" />
-          </div>
-        </div>
-
-        <div class="form-row split">
-          <div>
-            <label>Language</label>
-            <input id="language" />
-          </div>
-          <div>
-            <label>Genres</label>
-            <input id="genres" placeholder="comma separated" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <label>Directors</label>
-          <input id="directors" />
-        </div>
-
-        <div class="form-row">
-          <label>Writers</label>
-          <input id="writers" />
-        </div>
-
-        <div class="form-row">
-          <label>Top Cast</label>
-          <input id="cast" />
-        </div>
-
-        <div class="form-row">
-          <label>Production Companies</label>
-          <input id="companies" />
-        </div>
-
-        <div class="form-row">
-          <label>Trailer URL</label>
-          <input id="trailer" />
-        </div>
-
-        <div class="form-row downloads">
-          <label>Download Links</label>
-          <div id="downloadContainer"></div>
-          <button id="addDownload" class="btn">Add Link</button>
-        </div>
-
-        <div class="form-row">
-          <button id="generateBtn" class="btn primary">Generate HTML</button>
-          <button id="sendBtn" class="btn success">Send to Blogger</button>
-        </div>
-      </section>
-
-      <section class="panel panel-right">
-        <h2>Preview & Select Screenshots</h2>
-
-        <div class="preview-card">
-          <div class="poster-wrap">
-            <img id="posterImg" src="" alt="Poster" />
-          </div>
-          <div class="meta">
-            <h3 id="previewTitle">—</h3>
-            <p id="previewTagline" class="muted">Tagline</p>
-            <p id="previewOverview" class="overview"></p>
-            <div class="meta-grid">
-              <div><b>Release:</b> <span id="previewRelease">—</span></div>
-              <div><b>Runtime:</b> <span id="previewRuntime">—</span></div>
-              <div><b>Rating:</b> <span id="previewRating">—</span></div>
-            </div>
-            <div class="genre-tags" id="previewGenres"></div>
-            <div class="action-links">
-              <a id="previewTrailer" href="#" target="_blank" class="btn small">Watch Trailer</a>
-              <a id="previewHomepage" href="#" target="_blank" class="btn small ghost">Homepage</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="screenshot-section">
-          <h3>Screenshots (click to select)</h3>
-          <div id="screenshots" class="screenshot-grid"></div>
-          <p class="muted">Selected images will be included in the generated HTML. Use the preview to confirm.</p>
-        </div>
-
-        <div class="code-tools">
-          <button id="copyBtn" class="btn">Copy HTML</button>
-        </div>
-        <pre id="codeBox" class="code-box" readonly></pre>
-      </section>
-    </main>
-
-    <footer class="app-footer">
-      <small>Set TMDB_API_KEY, GMAIL_USER, GMAIL_PASS, BLOGGER_EMAIL in Vercel environment.</small>
-    </footer>
+    <h3>📝 Output</h3>
+    <div id="output"></div>
   </div>
 
-  <script src="/script.js"></script>
+  <script>
+    const TMDB_API_KEY = "c9ac3637696d089a9b1a1781518778a0";
+
+    async function fetchTMDB() {
+      const id = document.getElementById("tmdbId").value.trim();
+      const type = document.getElementById("type").value;
+      if (!id) return alert("Enter TMDB ID");
+      const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_API_KEY}&append_to_response=videos,credits`);
+      const data = await res.json();
+
+      if (data.success === false) return alert("Invalid TMDB ID");
+      document.getElementById("title").value = data.title || data.name || "";
+      document.getElementById("tagline").value = data.tagline || "";
+      document.getElementById("overview").value = data.overview || "";
+      document.getElementById("releaseDate").value = data.release_date || data.first_air_date || "";
+      document.getElementById("runtime").value = data.runtime || (data.episode_run_time ? data.episode_run_time[0] : "");
+      document.getElementById("rating").value = data.vote_average || "";
+      document.getElementById("genres").value = data.genres?.map(g => g.name).join(", ") || "";
+      document.getElementById("language").value = data.original_language || "";
+      document.getElementById("cast").value = data.credits?.cast?.slice(0, 5).map(c => c.name).join(", ") || "";
+      const trailer = data.videos?.results?.find(v => v.type === "Trailer");
+      document.getElementById("trailer").value = trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : "";
+    }
+
+    function generateHTML() {
+      const title = document.getElementById("title").value;
+      const tagline = document.getElementById("tagline").value;
+      const overview = document.getElementById("overview").value;
+      const releaseDate = document.getElementById("releaseDate").value;
+      const runtime = document.getElementById("runtime").value;
+      const rating = document.getElementById("rating").value;
+      const genres = document.getElementById("genres").value;
+      const language = document.getElementById("language").value;
+      const cast = document.getElementById("cast").value;
+      const trailer = document.getElementById("trailer").value;
+
+      let downloadHTML = "";
+      document.querySelectorAll(".downloadText").forEach((textEl, i) => {
+        const text = textEl.value.trim();
+        const url = document.querySelectorAll(".downloadUrl")[i].value.trim();
+        if (text && url) downloadHTML += `<p><a href="${url}" target="_blank"><b>${text}</b></a></p>`;
+      });
+
+      const html = `
+<h2><b>${title}</b></h2>
+<p><i>${tagline}</i></p>
+<p><b>Release Date:</b> ${releaseDate}</p>
+<p><b>Runtime:</b> ${runtime} min</p>
+<p><b>Rating:</b> ${rating}/10</p>
+<p><b>Genres:</b> ${genres}</p>
+<p><b>Language:</b> ${language}</p>
+<p><b>Cast:</b> ${cast}</p>
+<p>${overview}</p>
+${trailer ? `<iframe width="560" height="315" src="${trailer.replace('watch?v=', 'embed/')}" frameborder="0" allowfullscreen></iframe>` : ""}
+<h3>Download Links</h3>
+${downloadHTML}
+`;
+      document.getElementById("output").textContent = html.trim();
+      return { title, genres, html };
+    }
+
+    async function sendPost() {
+      const { title, genres, html } = generateHTML();
+      if (!title || !html) return alert("Generate the post first.");
+
+      const res = await fetch("/send-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, genres, html }),
+      });
+
+      const data = await res.json();
+      alert(data.success ? "✅ Post sent to Blogger Email!" : "❌ Failed: " + data.error);
+    }
+
+    document.getElementById("fetchBtn").addEventListener("click", fetchTMDB);
+    document.getElementById("generateBtn").addEventListener("click", generateHTML);
+    document.getElementById("sendBtn").addEventListener("click", sendPost);
+    document.getElementById("addDownload").addEventListener("click", () => {
+      const div = document.createElement("div");
+      div.className = "flex";
+      div.innerHTML = `
+        <input type="text" placeholder="Download Text" class="downloadText">
+        <input type="text" placeholder="Download URL" class="downloadUrl">
+      `;
+      document.getElementById("downloadContainer").appendChild(div);
+    });
+  </script>
 </body>
 </html>
