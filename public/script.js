@@ -1,66 +1,78 @@
-// script.js - handles UI interactions, fetch to /api/movie and /api/send
+// Enhanced script: richer preview, screenshot selection, inline-CSS HTML generator
 document.addEventListener('DOMContentLoaded', () => {
-  const searchQuery = document.getElementById('searchQuery');
-  const searchType = document.getElementById('searchType');
-  const fetchBtn = document.getElementById('fetchBtn');
+  const el = id => document.getElementById(id);
 
-  const title = document.getElementById('title');
-  const tagline = document.getElementById('tagline');
-  const overview = document.getElementById('overview');
-  const release_date = document.getElementById('release_date');
-  const runtime = document.getElementById('runtime');
-  const rating = document.getElementById('rating');
-  const language = document.getElementById('language');
-  const companies = document.getElementById('companies');
-  const genres = document.getElementById('genres');
-  const directors = document.getElementById('directors');
-  const writers = document.getElementById('writers');
-  const cast = document.getElementById('cast');
-  const trailer = document.getElementById('trailer');
+  const searchQuery = el('searchQuery');
+  const searchType = el('searchType');
+  const fetchBtn = el('fetchBtn');
 
-  const downloadContainer = document.getElementById('downloadContainer');
-  const addDownloadBtn = document.getElementById('addDownload');
+  const title = el('title');
+  const tagline = el('tagline');
+  const overview = el('overview');
+  const release_date = el('release_date');
+  const runtime = el('runtime');
+  const rating = el('rating');
+  const language = el('language');
+  const companies = el('companies');
+  const genres = el('genres');
+  const directors = el('directors');
+  const writers = el('writers');
+  const cast = el('cast');
+  const trailer = el('trailer');
 
-  const generateBtn = document.getElementById('generateBtn');
-  const sendBtn = document.getElementById('sendBtn');
-  const copyBtn = document.getElementById('copyBtn');
-  const codeBox = document.getElementById('codeBox');
+  const downloadContainer = el('downloadContainer');
+  const addDownloadBtn = el('addDownload');
 
-  // Utility to add a download row
-  function addDownloadRow(label = '', url = '') {
+  const generateBtn = el('generateBtn');
+  const sendBtn = el('sendBtn');
+  const copyBtn = el('copyBtn');
+  const codeBox = el('codeBox');
+
+  const posterImg = el('posterImg');
+  const previewTitle = el('previewTitle');
+  const previewTagline = el('previewTagline');
+  const previewOverview = el('previewOverview');
+  const previewRelease = el('previewRelease');
+  const previewRuntime = el('previewRuntime');
+  const previewRating = el('previewRating');
+  const previewGenres = el('previewGenres');
+  const previewTrailer = el('previewTrailer');
+  const previewHomepage = el('previewHomepage');
+
+  const screenshots = el('screenshots');
+
+  // Download rows
+  function addDownloadRow(label='', url='') {
     const div = document.createElement('div');
-    div.className = 'download-row';
+    div.className = 'dl-row';
+    div.style.display = 'flex';
+    div.style.gap = '8px';
+    div.style.marginBottom = '8px';
     div.innerHTML = `
       <input class="dl-label" placeholder="Button Text" value="${escapeHtmlAttr(label)}" />
-      <input class="dl-url" placeholder="Button URL" value="${escapeHtmlAttr(url)}" />
-      <button class="remove-dl" title="Remove">✖</button>
+      <input class="dl-url" placeholder="Button URL" value="${escapeHtmlAttr(url)}" style="flex:1" />
+      <button class="remove-dl btn small">✖</button>
     `;
     downloadContainer.appendChild(div);
-
     div.querySelector('.remove-dl').addEventListener('click', () => div.remove());
   }
-
-  // Initial one download row
   addDownloadRow();
 
   addDownloadBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    addDownloadRow();
+    e.preventDefault(); addDownloadRow();
   });
 
-  fetchBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
+  // Fetch from our /api/movie endpoint
+  fetchBtn.addEventListener('click', async () => {
     const q = searchQuery.value.trim();
     const t = searchType.value;
-    if (!q) return alert('Please enter a movie or TV name.');
+    if (!q) return alert('Enter a title to search');
 
-    fetchBtn.disabled = true;
-    fetchBtn.textContent = 'Fetching...';
-
+    fetchBtn.disabled = true; fetchBtn.textContent = 'Fetching...';
     try {
       const resp = await fetch('/api/movie', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ query: q, type: t })
       });
       if (!resp.ok) {
@@ -68,37 +80,78 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(err.error || 'Failed to fetch');
       }
       const data = await resp.json();
-      // auto-fill fields (editable)
-      title.value = data.title || '';
-      tagline.value = data.tagline || '';
-      overview.value = data.overview || '';
-      release_date.value = data.release_date || '';
-      runtime.value = data.runtime || '';
-      rating.value = data.rating || '';
-      language.value = data.language || '';
-      companies.value = (data.production_companies || []).map(c => c.name).join(', ');
-      genres.value = (data.genres || []).map(g => g.name).join(', ');
-      directors.value = (data.crew_summary && data.crew_summary.directors) ? data.crew_summary.directors.join(', ') : '';
-      writers.value = (data.crew_summary && data.crew_summary.writers) ? data.crew_summary.writers.join(', ') : '';
-      cast.value = (data.cast || []).map(c => c.name).join(', ');
-      trailer.value = data.trailer || '';
-
-      // clear downloads
-      downloadContainer.innerHTML = '';
-      addDownloadRow();
-
-      alert('Data fetched and form auto-filled. Edit fields as needed.');
+      populateForm(data);
+      renderPreview(data);
+      renderScreenshots(data.images_list || []);
+      alert('Fetched details — you may edit fields before generating.');
     } catch (err) {
-      console.error(err);
-      alert('Error fetching data: ' + err.message);
+      console.error(err); alert('Error: ' + err.message);
     } finally {
-      fetchBtn.disabled = false;
-      fetchBtn.textContent = 'Fetch & Auto-fill';
+      fetchBtn.disabled = false; fetchBtn.textContent = 'Fetch';
     }
   });
 
-  generateBtn.addEventListener('click', (e) => {
-    e.preventDefault();
+  // Populate form fields with fetched data
+  function populateForm(d) {
+    title.value = d.title || '';
+    tagline.value = d.tagline || '';
+    overview.value = d.overview || '';
+    release_date.value = d.release_date || '';
+    runtime.value = d.runtime || '';
+    rating.value = d.rating || '';
+    language.value = d.language || '';
+    companies.value = (d.production_companies || []).map(c=>c.name).join(', ');
+    genres.value = (d.genres || []).map(g=>g.name).join(', ');
+    directors.value = (d.crew_summary && d.crew_summary.directors) ? d.crew_summary.directors.join(', ') : '';
+    writers.value = (d.crew_summary && d.crew_summary.writers) ? d.crew_summary.writers.join(', ') : '';
+    cast.value = (d.cast || []).slice(0,12).map(c=>c.name).join(', ');
+    trailer.value = d.trailer || '';
+    // clear downloads
+    downloadContainer.innerHTML = '';
+    addDownloadRow();
+  }
+
+  // Render the right-side preview
+  function renderPreview(data) {
+    posterImg.src = data.poster_path || '';
+    previewTitle.textContent = data.title || '';
+    previewTagline.textContent = data.tagline || '';
+    previewOverview.textContent = data.overview || '';
+    previewRelease.textContent = data.release_date || '';
+    previewRuntime.textContent = data.runtime || '';
+    previewRating.textContent = (data.rating ? `${data.rating} / 10 (${data.votes || 0})` : '—');
+    previewGenres.innerHTML = '';
+    (data.genres || []).forEach(g => {
+      const span = document.createElement('span');
+      span.className = 'tag'; span.textContent = g.name;
+      previewGenres.appendChild(span);
+    });
+    previewTrailer.href = data.trailer || '#';
+    previewHomepage.href = data.homepage || '#';
+  }
+
+  // Render screenshot thumbnails
+  function renderScreenshots(images) {
+    screenshots.innerHTML = '';
+    if (!images || !images.length) {
+      screenshots.innerHTML = '<p class="muted">No images available.</p>';
+      return;
+    }
+    images.forEach((img, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      thumb.dataset.src = img.path;
+      thumb.title = `Image ${idx+1}`;
+      thumb.innerHTML = `<img src="${img.path}" alt="screenshot-${idx}" loading="lazy" />`;
+      thumb.addEventListener('click', () => {
+        thumb.classList.toggle('selected');
+      });
+      screenshots.appendChild(thumb);
+    });
+  }
+
+  // Generate HTML with inline CSS
+  generateBtn.addEventListener('click', () => {
     const html = generateHtml();
     codeBox.textContent = html;
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
@@ -107,47 +160,37 @@ document.addEventListener('DOMContentLoaded', () => {
   copyBtn.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(codeBox.textContent);
-      alert('HTML copied to clipboard.');
+      alert('HTML copied to clipboard');
     } catch (err) {
-      alert('Failed to copy to clipboard: ' + err.message);
+      alert('Copy failed: ' + err.message);
     }
   });
 
+  // Send to /api/send
   sendBtn.addEventListener('click', async () => {
     const html = codeBox.textContent || generateHtml();
-    if (!html) return alert('Nothing to send. Generate HTML first.');
+    if (!html) return alert('Generate HTML first.');
+    const postTitle = title.value || 'Untitled';
+    const labelsArr = (genres.value || '').split(',').map(s=>s.trim()).filter(Boolean);
 
-    const postTitle = title.value || 'Untitled Post';
-    // Build labels array from genres field
-    const labelsArr = (genres.value || '').split(',').map(s => s.trim()).filter(Boolean);
-
-    sendBtn.disabled = true;
-    sendBtn.textContent = 'Sending...';
-
+    sendBtn.disabled = true; sendBtn.textContent = 'Sending...';
     try {
       const resp = await fetch('/api/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: postTitle,
-          html,
-          labels: labelsArr
-        })
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ title: postTitle, html, labels: labelsArr })
       });
       const result = await resp.json();
-      if (!resp.ok) {
-        throw new Error(result.error || 'Failed to send');
-      }
-      alert('Sent successfully. Blogger should receive the post via email (subject = post title).');
+      if (!resp.ok) throw new Error(result.error || 'Failed to send');
+      alert('Sent — Blogger should receive the email.');
     } catch (err) {
-      console.error(err);
-      alert('Error sending: ' + err.message);
+      console.error(err); alert('Send failed: ' + err.message);
     } finally {
-      sendBtn.disabled = false;
-      sendBtn.textContent = 'Send to Blogger (via Gmail)';
+      sendBtn.disabled = false; sendBtn.textContent = 'Send to Blogger';
     }
   });
 
+  // Build the final HTML with inline CSS and selected screenshots
   function generateHtml() {
     const postTitle = title.value || '';
     const tl = tagline.value || '';
@@ -163,51 +206,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const ct = cast.value || '';
     const tr = trailer.value || '';
 
-    // download links
-    const dls = Array.from(downloadContainer.querySelectorAll('.download-row')).map(r => {
+    const dls = Array.from(downloadContainer.querySelectorAll('.dl-row')).map(r => {
       const lbl = r.querySelector('.dl-label').value.trim();
       const url = r.querySelector('.dl-url').value.trim();
       if (!lbl || !url) return null;
       return { label: lbl, url };
     }).filter(Boolean);
 
-    // Build HTML: bold labels and normal values. Genres shown as Post Labels.
+    const selectedImages = Array.from(screenshots.querySelectorAll('.thumb.selected')).map(t => t.dataset.src);
+
+    // Inline CSS (simple, clean, self-contained)
+    const inlineCss = `
+<style>
+  .post-wrap{font-family: Arial, Helvetica, sans-serif; color:#0b1220; line-height:1.45; padding:18px;}
+  .post-header{display:flex;gap:18px;align-items:flex-start}
+  .post-poster{width:220px;flex:0 0 220px}
+  .post-poster img{width:220px;border-radius:8px;display:block}
+  .post-main{flex:1}
+  .post-title{font-size:28px;margin:0 0 6px}
+  .post-tagline{color:#444;margin:0 0 12px}
+  .post-meta{color:#555;font-size:13px;margin-bottom:12px}
+  .genre-labels{margin-bottom:10px}
+  .genre-labels .label{display:inline-block;background:#eef2ff;color:#3b2a86;padding:6px 8px;border-radius:8px;margin-right:6px;font-size:12px}
+  .overview{margin:12px 0;color:#222}
+  .download-buttons a{display:inline-block;background:#1f6feb;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none;margin:6px 6px 6px 0}
+  .screenshot-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .screenshot-gallery img{width:320px;border-radius:8px;display:block}
+  .trailer-link{display:inline-block;margin-top:10px;color:#0b5ed7;text-decoration:none}
+</style>`.trim();
+
     const lines = [];
+    if (gens) lines.push(`<div class="genre-labels"><b>Post Labels:</b> ${(gens.split(',').map(s=>s.trim()).filter(Boolean).map(s => `<span class="label">${escapeHtml(s)}</span>`).join(' '))}</div>`);
+    if (tl) lines.push(`<p class="post-tagline">${escapeHtml(tl)}</p>`);
+    if (ov) lines.push(`<div class="overview">${escapeHtml(ov)}</div>`);
+    const metaParts = [];
+    if (rd) metaParts.push(`<b>Release:</b> ${escapeHtml(rd)}`);
+    if (rt) metaParts.push(`<b>Runtime:</b> ${escapeHtml(rt)}`);
+    if (rtg) metaParts.push(`<b>Rating:</b> ${escapeHtml(rtg)}`);
+    if (metaParts.length) lines.push(`<div class="post-meta">${metaParts.join(' • ')}</div>`);
+    if (dirs) lines.push(`<p><b>Director(s):</b> ${escapeHtml(dirs)}</p>`);
+    if (wr) lines.push(`<p><b>Writer(s):</b> ${escapeHtml(wr)}</p>`);
+    if (ct) lines.push(`<p><b>Cast:</b> ${escapeHtml(ct)}</p>`);
+    if (comps) lines.push(`<p><b>Production:</b> ${escapeHtml(comps)}</p>`);
+    if (tr) lines.push(`<p><a class="trailer-link" href="${escapeAttr(tr)}" target="_blank">Watch Trailer</a></p>`);
 
-    if (gens) {
-      // Show Genres as Post Labels as requested
-      const labelHtml = `<p><b>Post Labels:</b> ${escapeHtml(gens)}</p>`;
-      lines.push(labelHtml);
-    }
-
-    if (tl) lines.push(`<p><b>Tagline:</b> ${escapeHtml(tl)}</p>`);
-    if (ov) lines.push(`<p><b>Overview:</b> ${escapeHtml(ov)}</p>`);
-    if (rd) lines.push(`<p><b>Release Date:</b> ${escapeHtml(rd)}</p>`);
-    if (rt) lines.push(`<p><b>Runtime:</b> ${escapeHtml(rt)}</p>`);
-    if (rtg) lines.push(`<p><b>Rating:</b> ${escapeHtml(rtg)}</p>`);
-    if (lang) lines.push(`<p><b>Language:</b> ${escapeHtml(lang)}</p>`);
-    if (comps) lines.push(`<p><b>Production Companies:</b> ${escapeHtml(comps)}</p>`);
-    if (dirs) lines.push(`<p><b>Directors:</b> ${escapeHtml(dirs)}</p>`);
-    if (wr) lines.push(`<p><b>Writers:</b> ${escapeHtml(wr)}</p>`);
-    if (ct) lines.push(`<p><b>Top Cast:</b> ${escapeHtml(ct)}</p>`);
-    if (tr) lines.push(`<p><b>Trailer:</b> <a href="${escapeAttr(tr)}" target="_blank">${escapeHtml(tr)}</a></p>`);
-
-    // Downloads as inline buttons
     if (dls.length) {
-      const buttons = dls.map(dl => `<a href="${escapeAttr(dl.url)}" style="display:inline-block;margin:6px 8px;padding:8px 12px;background:#2b6cb0;color:#fff;border-radius:6px;text-decoration:none;">${escapeHtml(dl.label)}</a>`).join('');
-      lines.push(`<p><b>Download:</b><br/>${buttons}</p>`);
+      const buttons = dls.map(dl => `<a href="${escapeAttr(dl.url)}" rel="nofollow noopener" target="_blank">${escapeHtml(dl.label)}</a>`).join('');
+      lines.push(`<div class="download-buttons"><b>Download:</b><br/>${buttons}</div>`);
     }
 
-    // Wrap with a main container; title is used as email subject when sending
-    const html = `<div>
-  <h1>${escapeHtml(postTitle)}</h1>
-  ${lines.join('\n  ')}
+    if (selectedImages.length) {
+      const imgs = selectedImages.map(src => `<img src="${escapeAttr(src)}" alt="" />`).join('');
+      lines.push(`<div class="screenshot-gallery">${imgs}</div>`);
+    }
+
+    const html = `${inlineCss}
+<div class="post-wrap">
+  <div class="post-header">
+    <div class="post-poster">${posterImg.src ? `<img src="${escapeAttr(posterImg.src)}" alt="${escapeHtml(postTitle)}" />` : ''}</div>
+    <div class="post-main">
+      <h1 class="post-title">${escapeHtml(postTitle)}</h1>
+      ${lines.join('\n      ')}
+    </div>
+  </div>
 </div>`;
 
     return html;
   }
 
-  // small helpers
+  // Helpers
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)
