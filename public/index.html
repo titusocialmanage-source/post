@@ -3,69 +3,147 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TMDB Post Generator</title>
+  <title>TMDB Post Generator — Stylish</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>TMDB Post Generator</h1>
-
-    <section class="search">
-      <label>Search Movie / TV:</label>
-      <div class="row">
-        <input id="searchQuery" placeholder="Enter movie or TV show name" />
+  <div class="app">
+    <header class="app-header">
+      <div class="logo">
+        <h1>TMDB Post Generator</h1>
+        <p class="tag">Stylish Blogger posts — select screenshots & generate inline-CSS HTML</p>
+      </div>
+      <div class="controls">
+        <input id="searchQuery" placeholder="Search movie or TV show..." />
         <select id="searchType">
           <option value="movie">Movie</option>
           <option value="tv">TV</option>
         </select>
-        <button id="fetchBtn">Fetch & Auto-fill</button>
+        <button id="fetchBtn" class="btn primary">Fetch</button>
       </div>
-      <p class="muted">Search via TMDB and auto-populate the form below. All fields are editable.</p>
-    </section>
+    </header>
 
-    <section id="formSection" class="form-section">
-      <h2>Post Details</h2>
+    <main class="grid">
+      <section class="panel panel-left">
+        <h2>Post Details (editable)</h2>
 
-      <div class="field"><label>Title</label><input id="title" /></div>
-      <div class="field"><label>Tagline</label><input id="tagline" /></div>
-      <div class="field"><label>Overview</label><textarea id="overview"></textarea></div>
-      <div class="row">
-        <div class="field small"><label>Release Date</label><input id="release_date" /></div>
-        <div class="field small"><label>Runtime (min)</label><input id="runtime" /></div>
-        <div class="field small"><label>Rating</label><input id="rating" /></div>
-      </div>
-      <div class="field"><label>Language</label><input id="language" /></div>
-      <div class="field"><label>Production Companies (comma separated)</label><input id="companies" /></div>
-      <div class="field"><label>Genres (comma separated)</label><input id="genres" /></div>
+        <div class="form-row">
+          <label>Title</label>
+          <input id="title" />
+        </div>
 
-      <div class="field"><label>Directors (comma separated)</label><input id="directors" /></div>
-      <div class="field"><label>Writers (comma separated)</label><input id="writers" /></div>
-      <div class="field"><label>Top Cast (comma separated)</label><input id="cast" /></div>
+        <div class="form-row">
+          <label>Tagline</label>
+          <input id="tagline" />
+        </div>
 
-      <div class="field"><label>Trailer URL</label><input id="trailer" /></div>
+        <div class="form-row">
+          <label>Overview</label>
+          <textarea id="overview"></textarea>
+        </div>
 
-      <div class="downloads">
-        <label>Download Links</label>
-        <div id="downloadContainer"></div>
-        <button id="addDownload">Add Download Link</button>
-      </div>
+        <div class="form-row split">
+          <div>
+            <label>Release Date</label>
+            <input id="release_date" />
+          </div>
+          <div>
+            <label>Runtime</label>
+            <input id="runtime" />
+          </div>
+          <div>
+            <label>Rating</label>
+            <input id="rating" />
+          </div>
+        </div>
 
-      <div class="actions">
-        <button id="generateBtn">Generate HTML</button>
-        <button id="sendBtn">Send to Blogger (via Gmail)</button>
-      </div>
-    </section>
+        <div class="form-row split">
+          <div>
+            <label>Language</label>
+            <input id="language" />
+          </div>
+          <div>
+            <label>Genres</label>
+            <input id="genres" placeholder="comma separated" />
+          </div>
+        </div>
 
-    <section class="output">
-      <h2>Generated HTML</h2>
-      <div class="code-tools">
-        <button id="copyBtn">Copy HTML</button>
-      </div>
-      <pre id="codeBox" class="code-box" readonly></pre>
-    </section>
+        <div class="form-row">
+          <label>Directors</label>
+          <input id="directors" />
+        </div>
 
-    <footer>
-      <small>Ready to deploy on Vercel. Set TMDB_API_KEY, GMAIL_USER, GMAIL_PASS, BLOGGER_EMAIL in environment.</small>
+        <div class="form-row">
+          <label>Writers</label>
+          <input id="writers" />
+        </div>
+
+        <div class="form-row">
+          <label>Top Cast</label>
+          <input id="cast" />
+        </div>
+
+        <div class="form-row">
+          <label>Production Companies</label>
+          <input id="companies" />
+        </div>
+
+        <div class="form-row">
+          <label>Trailer URL</label>
+          <input id="trailer" />
+        </div>
+
+        <div class="form-row downloads">
+          <label>Download Links</label>
+          <div id="downloadContainer"></div>
+          <button id="addDownload" class="btn">Add Link</button>
+        </div>
+
+        <div class="form-row">
+          <button id="generateBtn" class="btn primary">Generate HTML</button>
+          <button id="sendBtn" class="btn success">Send to Blogger</button>
+        </div>
+      </section>
+
+      <section class="panel panel-right">
+        <h2>Preview & Select Screenshots</h2>
+
+        <div class="preview-card">
+          <div class="poster-wrap">
+            <img id="posterImg" src="" alt="Poster" />
+          </div>
+          <div class="meta">
+            <h3 id="previewTitle">—</h3>
+            <p id="previewTagline" class="muted">Tagline</p>
+            <p id="previewOverview" class="overview"></p>
+            <div class="meta-grid">
+              <div><b>Release:</b> <span id="previewRelease">—</span></div>
+              <div><b>Runtime:</b> <span id="previewRuntime">—</span></div>
+              <div><b>Rating:</b> <span id="previewRating">—</span></div>
+            </div>
+            <div class="genre-tags" id="previewGenres"></div>
+            <div class="action-links">
+              <a id="previewTrailer" href="#" target="_blank" class="btn small">Watch Trailer</a>
+              <a id="previewHomepage" href="#" target="_blank" class="btn small ghost">Homepage</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="screenshot-section">
+          <h3>Screenshots (click to select)</h3>
+          <div id="screenshots" class="screenshot-grid"></div>
+          <p class="muted">Selected images will be included in the generated HTML. Use the preview to confirm.</p>
+        </div>
+
+        <div class="code-tools">
+          <button id="copyBtn" class="btn">Copy HTML</button>
+        </div>
+        <pre id="codeBox" class="code-box" readonly></pre>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>Set TMDB_API_KEY, GMAIL_USER, GMAIL_PASS, BLOGGER_EMAIL in Vercel environment.</small>
     </footer>
   </div>
 
