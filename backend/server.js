@@ -1,15 +1,19 @@
 import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
 
+dotenv.config();
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// 🧠 POST endpoint for Blogger mail publishing
+// ✅ POST endpoint for Blogger Email Publish
 app.post("/send", async (req, res) => {
   const { subject, html, token } = req.body;
 
+  // Token check
   if (token !== process.env.ADMIN_TOKEN)
     return res.status(401).json({ error: "Unauthorized - Invalid Token" });
 
@@ -24,15 +28,15 @@ app.post("/send", async (req, res) => {
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: process.env.RECEIVER_EMAIL, // your Blogger post-by-email
+      to: process.env.RECEIVER_EMAIL,
       subject: subject || "New TMDB Post",
       html
     });
 
-    console.log("✅ Email sent successfully!");
+    console.log("✅ Post sent successfully to Blogger!");
     res.json({ success: true, message: "Email sent successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error sending mail:", error);
     res.status(500).json({ error: error.message });
   }
 });
