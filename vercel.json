@@ -1,11 +1,30 @@
 {
   "version": 2,
   "builds": [
-    { "src": "public/**", "use": "@vercel/static" },
-    { "src": "api/*.js", "use": "@vercel/node" }
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ]
+    {
+      "src": "/send-post",
+      "methods": ["POST"],
+      "dest": "/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ],
+  "env": {
+    "EMAIL_USER": "titusocialmanage@gmail.com",
+    "EMAIL_PASS": "tyronbvryecaipox",
+    "RECEIVER_EMAIL": "titusocialmanage.titu@blogger.com",
+    "TMDB_API_KEY": "c9ac3637696d089a9b1a1781518778a0"
+  }
 }
